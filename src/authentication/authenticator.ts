@@ -135,7 +135,7 @@ export class Authenticator {
       matchParts;
 
     while ((matchParts = regex.exec(segment)) !== null) {
-      /* Fixes bugs when the state parameters contains a / before them */
+      // Fixes bugs when the state parameters contains a / before them
       if (matchParts[1] === '/state') {
         matchParts[1] = matchParts[1].replace('/', '');
       }
@@ -146,27 +146,24 @@ export class Authenticator {
   }
 
   private async _openAuthDialog(provider: string, useMicrosoftTeams: boolean): Promise<IToken> {
-    /** Get the endpoint configuration for the given provider and verify that it exists. */
+    // Get the endpoint configuration for the given provider and verify that it exists.
     let endpoint = this.endpoints.get(provider);
     if (endpoint == null) {
       return Promise.reject(new AuthError(`No such registered endpoint: ${provider} could be found.`)) as any;
     }
 
-    /** Set the authentication state to redirect and begin the auth flow */
+    // Set the authentication state to redirect and begin the auth flow
     let { state, url } = EndpointStorage.getLoginParams(endpoint);
 
-    /**
-     * Launch the dialog and perform the OAuth flow. We Launch the dialog at the redirect
-     * url where we expect the call to isAuthDialog to be available.
-     */
-    let redirectUrl = await new Dialog<string>(url, 1024, 768, useMicrosoftTeams).result;
-
-    /** Try and extract the result and pass it along */
-    return this._handleTokenResult(redirectUrl, endpoint, state);
+    // Launch the dialog and perform the OAuth flow. We Launch the dialog at the redirect
+    // url where we expect the call to isAuthDialog to be available.
+    return new Dialog<string>(url, 1024, 768, useMicrosoftTeams)
+      // Try and extract the result and pass it along
+      .result.then(redirectUrl => this._handleTokenResult(redirectUrl, endpoint, state));
   }
 
   private _openInWindowPopup(provider: string): Promise<IToken> {
-    /** Get the endpoint configuration for the given provider and verify that it exists. */
+    // Get the endpoint configuration for the given provider and verify that it exists.
     let endpoint = this.endpoints.get(provider);
     if (endpoint == null) {
       return Promise.reject(new AuthError(`No such registered endpoint: ${provider} could be found.`)) as any;

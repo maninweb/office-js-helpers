@@ -33,20 +33,18 @@ export class ExcelUtilities {
       throw new APIError('Sheet name cannot be greater than 31 characters.');
     }
 
-    let sheet: Excel.Worksheet;
+    let sheet: Promise<Excel.Worksheet>;
     if (clearOnly) {
-      sheet = await createOrClear(workbook.context as any, workbook, sheetName);
+      sheet = createOrClear(workbook.context as any, workbook, sheetName);
     } else {
-      sheet = await recreateFromScratch(workbook.context as any, workbook, sheetName);
+      sheet = recreateFromScratch(workbook.context as any, workbook, sheetName);
     }
 
     // To work around an issue with Office Online (tracked by the API team), it is
     // currently necessary to do a `context.sync()` before any call to `sheet.activate()`.
     // So to be safe, in case the caller of this helper method decides to immediately
     // turn around and call `sheet.activate()`, call `sync` before returning the sheet.
-    await workbook.context.sync();
-
-    return sheet;
+    return workbook.context.sync().then(() => sheet);
   }
 }
 
@@ -60,34 +58,33 @@ async function createOrClear(
 ): Promise<Excel.Worksheet> {
   if (Office.context.requirements.isSetSupported('ExcelApi', 1.4)) {
     const existingSheet = context.workbook.worksheets.getItemOrNullObject(sheetName);
-    await context.sync();
-
-    if (existingSheet.isNullObject) {
-      return context.workbook.worksheets.add(sheetName);
-    } else {
-      existingSheet.getRange().clear();
-      return existingSheet;
-    }
+    return context.sync().then(() => {
+      if (existingSheet.isNullObject) {
+        return context.workbook.worksheets.add(sheetName);
+      } else {
+        existingSheet.getRange().clear();
+        return existingSheet;
+      }
+    });
   }
   else {
     // Flush anything already in the queue, so as to scope the error handling logic below.
-    await context.sync();
-
-    try {
-      const oldSheet = workbook.worksheets.getItem(sheetName);
-      oldSheet.getRange().clear();
-      await context.sync();
-      return oldSheet;
-    }
-    catch (error) {
-      if (error instanceof OfficeExtension.Error && error.code === Excel.ErrorCodes.itemNotFound) {
-        // This is an expected case where the sheet didn't exist. Create it now.
-        return workbook.worksheets.add(sheetName);
+    return context.sync().then(() => {
+      try {
+        const oldSheet = workbook.worksheets.getItem(sheetName);
+        oldSheet.getRange().clear();
+        return context.sync().then(() => oldSheet);
       }
-      else {
-        throw new APIError('Unexpected error while trying to delete sheet.', error);
+      catch (error) {
+        if (error instanceof OfficeExtension.Error && error.code === Excel.ErrorCodes.itemNotFound) {
+          // This is an expected case where the sheet didn't exist. Create it now.
+          return workbook.worksheets.add(sheetName);
+        }
+        else {
+          throw new APIError('Unexpected error while trying to delete sheet.', error);
+        }
       }
-    }
+    });
   }
 }
 
@@ -103,21 +100,21 @@ async function recreateFromScratch(
   }
   else {
     // Flush anything already in the queue, so as to scope the error handling logic below.
-    await context.sync();
-
-    try {
-      const oldSheet = workbook.worksheets.getItem(sheetName);
-      oldSheet.delete();
-      await context.sync();
-    }
-    catch (error) {
-      if (error instanceof OfficeExtension.Error && error.code === Excel.ErrorCodes.itemNotFound) {
-        // This is an expected case where the sheet didn't exist. Hence no-op.
+    return context.sync().then(() => {
+      try {
+        const oldSheet = workbook.worksheets.getItem(sheetName);
+        oldSheet.delete();
+        return context.sync();
       }
-      else {
-        throw new APIError('Unexpected error while trying to delete sheet.', error);
+      catch (error) {
+        if (error instanceof OfficeExtension.Error && error.code === Excel.ErrorCodes.itemNotFound) {
+          // This is an expected case where the sheet didn't exist. Hence no-op.
+        }
+        else {
+          throw new APIError('Unexpected error while trying to delete sheet.', error);
+        }
       }
-    }
+    });
   }
 
   newSheet.name = sheetName;

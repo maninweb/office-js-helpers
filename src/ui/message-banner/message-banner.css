@@ -1,0 +1,47 @@
+.ojh-notification {
+  position: fixed;
+  z-index: 999999999;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+}
+
+.ojh-notification-button {
+  width: 32px;
+  padding: 8px;
+  min-width: initial;
+  right: 0;
+  position: absolute;
+  margin: 0;
+}
+
+.ojh-notification-text {
+  margin: 8px 8px 0px 8px;
+  max-width: calc(100% - 64px);
+}
+
+.ojh-notification-details {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+  font-size: 10pt;
+}
+
+.ojh-notification-button {
+  height: 52px;
+  width: 40px;
+  cursor: pointer;
+  float: right;
+  background: transparent;
+  border: 0;
+  margin-left: 10px;
+}
+
+.ojh-notification-button-pc {
+  margin-right: 20px;
+}
+
+.ojh-notification-button-osx {
+  margin-right: 40px;
+}
